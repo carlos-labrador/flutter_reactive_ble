@@ -8,9 +8,59 @@ import 'package:flutter_reactive_ble_example/src/ui/device_list.dart';
 import 'package:provider/provider.dart';
 
 const _themeColor = Colors.lightGreen;
+Future<void> initializeFlutterFire() async {
+  try {
+    String _fcmToken;
+    // Wait for Firebase to initialize and set `_initialized` state to true
+    print('Initializing Firebase!');
+    await Firebase.initializeApp();
+    final _fcm = FirebaseMessaging.instance;
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('Got a message whilst in the foreground!');
+      print('Message data: ${message.data}');
+    });
 
-void main() {
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    // Also handle any interaction when the app is in the background via a
+    // Stream listener
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
+      print("onMessageOpenedApp: ${message.messageId}");
+    });
+
+    final settings = await _fcm.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
+    );
+
+    print('User granted permission: ${settings.authorizationStatus}');
+    _fcmToken = await _fcm.getToken();
+    print(_fcmToken);
+  } catch (error) {
+    // Set `_error` state to true if Firebase initialization fails
+    print('Firebase Initialization failed $error');
+  }
+}
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  try {
+    // If you're going to use other Firebase services in the background, such as Firestore,
+    // make sure you call `initializeApp` before using other Firebase services.
+    // FirebaseApp firebaseApp = await Firebase.initializeApp();
+    print("Handling a background message: ${message.messageId}");
+  } catch (e) {
+    print('$e');
+  }
+}
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeFlutterFire();
 
   final _ble = FlutterReactiveBle();
   final _scanner = BleScanner(_ble);
